@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECG · Recording analysis</title>
+    <style>
+        :root { --paper:#000000; --surface:#151515; --ink:#F5F5F5; --muted:#BCBCBC; --line:#383838; --accent:#E5E5E5; --increase:#F87171; --decrease:#4ADE80; color-scheme:dark; }
+        * { box-sizing:border-box; }
+        body { margin:0; background:var(--paper); color:var(--ink); font:17px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+        button,input,select { font:inherit; }
+        button { cursor:pointer; }
+        button:disabled { opacity:.55; cursor:wait; }
+        button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible { outline:3px solid #D0D0D0; outline-offset:3px; }
+        .hidden { display:none !important; }
+        .shell { max-width:1480px; margin:auto; padding:22px 28px 40px; }
+        header { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:20px; }
+        .brand { font-size:22px; font-weight:750; letter-spacing:-.4px; }
+        .brand span { font-weight:450; color:var(--muted); margin-left:12px; font-size:16px; }
+        .header-note { color:var(--muted); font-size:13px; }
+        .eyebrow { color:var(--muted); font-size:13px; font-weight:600; }
+        h1 { font-size:30px; font-weight:650; letter-spacing:-.6px; margin:0 0 5px; }
+        .intro { color:var(--muted); margin:0 0 22px; font-size:16px; }
+        .workspace { display:grid; grid-template-columns:320px minmax(0,1fr); gap:22px; align-items:start; }
+        .panel { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:22px; }
+        aside.panel { position:sticky; top:20px; }
+        h2 { font-size:20px; font-weight:650; margin:0 0 18px; letter-spacing:-.2px; }
+        h3 { font-size:16px; font-weight:600; margin:0; }
+        .field { margin-bottom:20px; }
+        label { display:block; font-size:15px; font-weight:600; margin-bottom:8px; }
+        input[type=file] { width:100%; font-size:14px; color:var(--muted); }
+        input::file-selector-button { background:#242424; border:1px solid #666666; padding:10px 12px; border-radius:4px; color:var(--ink); font-weight:600; margin:0 8px 8px 0; cursor:pointer; }
+        input[type=number],select { width:100%; min-height:48px; padding:10px 12px; border:1px solid #666666; border-radius:4px; background:#080808; color:var(--ink); font-size:17px; }
+        .help { color:var(--muted); font-size:13px; line-height:1.45; margin:8px 0 0; }
+        .actions { display:flex; gap:10px; margin-top:24px; }
+        .primary,.secondary { min-height:50px; border-radius:5px; padding:12px 16px; font-size:16px; font-weight:700; transition:background .15s,transform .15s; }
+        .primary { background:var(--accent); color:#111111; border:1px solid #FFFFFF; box-shadow:0 3px 0 #080808; flex:1; }
+        .primary:hover { background:#FFFFFF; }
+        .primary:active { transform:translateY(2px); box-shadow:0 1px 0 #080808; }
+        .secondary { background:#242424; color:var(--ink); border:1px solid #666666; }
+        .secondary:hover { background:#343434; }
+        .aside-note { margin:22px 0 0; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+        summary { cursor:pointer; font-weight:600; }
+        .aside-note p { margin:10px 0 0; }
+        .right { min-width:0; display:grid; gap:18px; }
+        .empty { min-height:270px; display:flex; flex-direction:column; justify-content:center; padding:32px; border:1px dashed var(--line); border-radius:6px; }
+        .empty h2 { font-size:24px; font-weight:600; margin-bottom:10px; }
+        .empty p { margin:0; color:var(--muted); max-width:520px; font-size:17px; }
+        .empty .eyebrow { margin-bottom:14px; }
+        .panel-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+        .panel-heading h2 { margin:0; }
+        .tag { color:var(--muted); font-size:13px; border:1px solid var(--line); border-radius:4px; padding:4px 9px; }
+        .waveform { height:155px; width:100%; }
+        canvas { display:block; width:100%; height:100%; }
+        .chart-caption { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; margin-top:8px; }
+        .progress-track { height:7px; background:#080808; margin:12px 0; overflow:hidden; border-radius:3px; }
+        #progressBar { height:100%; width:0; background:var(--accent); transition:width .2s; }
+        #progressMessage,#loading { color:var(--muted); font-size:14px; margin:0; }
+        #error { color:var(--increase); font-size:15px; margin:16px 0 0; }
+        .results { display:grid; gap:18px; }
+        .notice { padding:10px 14px; font-size:13px; line-height:1.4; color:var(--muted); margin:0; border-left:3px solid #888888; background:#151515; }
+        #statusBanner { border-left-width:4px; padding:20px 24px; }
+        #statusBanner.stress { border-left-color:var(--increase); background:#211112; }
+        #statusBanner.no-stress { border-left-color:var(--decrease); background:#102018; }
+        .result-top { display:flex; align-items:center; justify-content:space-between; gap:20px; }
+        #predictionLabel { font-weight:750; font-size:38px; line-height:1.1; margin:7px 0 8px; letter-spacing:-.9px; }
+        .stress #predictionLabel { color:var(--increase); }
+        .no-stress #predictionLabel { color:var(--decrease); }
+        .score { text-align:right; }
+        #confidenceScore { font-size:34px; font-weight:650; line-height:1.2; font-variant-numeric:tabular-nums; margin:7px 0; }
+        #recordingName { font-size:14px; color:var(--muted); overflow-wrap:anywhere; margin:0; }
+        .facts { display:flex; flex-wrap:wrap; gap:12px 32px; border-top:1px solid #555555; margin-top:16px; padding-top:13px; }
+        .fact { font-size:13px; color:var(--muted); }
+        .fact strong { display:block; font-size:17px; color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
+        .columns { display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:stretch; }
+        #hrvList { display:grid; grid-template-columns:1fr 1fr; gap:12px; list-style:none; padding:0; margin:0; }
+        .metric { display:flex; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:10px; padding:15px 16px; min-height:102px; background:#080808; border:1px solid #242424; border-radius:5px; }
+        .metric-name { font-size:15px; font-weight:550; color:#D0D0D0; }
+        .metric-value { font-size:28px; font-weight:700; letter-spacing:-.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+        .metric-value.unavailable { font-size:17px; font-weight:500; color:var(--muted); letter-spacing:0; }
+        .unit { color:var(--muted); font-size:14px; font-weight:500; margin-left:5px; letter-spacing:0; }
+        .metric-guide { margin:15px 0 0; font-size:13px; color:var(--muted); }
+        .shap-row { margin:0 0 14px; }
+        .shap-label { display:flex; justify-content:space-between; align-items:baseline; font-size:16px; margin-bottom:7px; gap:10px; font-weight:550; }
+        .feature-reading { display:block; margin-top:2px; color:var(--muted); font-size:13px; font-weight:450; }
+        .contribution-positive { color:var(--increase) !important; }
+        .contribution-negative { color:var(--decrease) !important; }
+        .shap-label small { color:var(--ink); font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+        .shap-row:first-child .shap-label { font-weight:700; }
+        .shap-row:first-child { border-left:3px solid #D0D0D0; padding-left:11px; }
+        .shap-track { height:8px; background:#080808; border-radius:2px; overflow:hidden; }
+        .shap-fill { height:100%; }
+        .increase { background:var(--increase); }
+        .decrease { background:var(--decrease); }
+        .legend { display:flex; flex-wrap:wrap; gap:8px 16px; color:#CCCCCC; font-size:13px; padding-top:12px; border-top:1px solid var(--line); }
+        .legend i { display:inline-block; width:9px; height:9px; margin-right:6px; }
+        #metricWarnings { color:#D0D0D0; font-size:14px; margin:0; padding-left:20px; }
+        #metricWarnings:empty { display:none; }
+        footer { color:var(--muted); font-size:13px; border-top:1px solid var(--line); margin-top:26px; padding-top:14px; }
+        .compare-button { width:100%; min-height:46px; margin-top:12px; border:1px solid #777777; border-radius:5px; color:#F5F5F5; background:#242424; font-weight:650; font-size:15px; }
+        .compare-button:hover { background:#343434; }
+        .result-tools { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; }
+        .result-tools h2 { margin:0; }
+        .download-actions { display:flex; gap:8px; }
+        .download-actions button { min-height:40px; padding:8px 12px; font-size:14px; }
+        .comparison-scroll { overflow-x:auto; }
+        .comparison-table { width:100%; min-width:680px; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
+        .comparison-table th { text-align:left; color:var(--muted); font-weight:550; font-size:12px; padding:0 10px 12px; border-bottom:1px solid #666666; }
+        .comparison-table td { padding:13px 10px; border-bottom:1px solid var(--line); }
+        .comparison-table td:first-child { font-weight:650; }
+        .comparison-table .selected { background:#242424; }
+        .comparison-table .state-stress { color:var(--increase); font-weight:600; }
+        .comparison-table .state-no-stress { color:var(--decrease); font-weight:600; }
+        .view-model { padding:6px 10px; min-height:34px; border:1px solid #777777; border-radius:4px; background:#242424; color:var(--ink); font-size:13px; font-weight:600; }
+        .view-model:disabled { opacity:1; color:#FFFFFF; background:#151515; cursor:default; }
+        .comparison-error { font-size:12px; color:var(--muted); }
+        .analytics { display:grid; gap:18px; }
+        .analytics-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+        .analytics-summary .metric-value { font-size:26px; }
+        .chart-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+        .chart-card { min-width:0; }
+        .chart-card.wide { grid-column:1 / -1; }
+        .analysis-chart { display:block; width:100%; height:240px; }
+        .chart-card .help { margin-bottom:0; }
+        @media(max-width:700px) { .chart-grid { grid-template-columns:1fr; } .analytics-summary { grid-template-columns:1fr 1fr; } }
+        @media(max-width:1100px) { .analytics-summary { grid-template-columns:1fr 1fr; } .workspace { grid-template-columns:290px minmax(0,1fr); gap:18px; } .columns { grid-template-columns:1fr; } }
+        @media(max-width:800px) { .shell { padding:18px 16px; } .workspace { grid-template-columns:1fr; gap:18px; } aside.panel { position:static; } h1 { font-size:26px; } .header-note { display:none; } .field { margin-bottom:16px; } .empty { min-height:180px; } }
+        @media(max-width:500px) { .panel { padding:18px; } #statusBanner { padding:18px; } .brand span { display:block; margin:3px 0 0; } .facts { gap:12px 20px; } #predictionLabel { font-size:32px; } #confidenceScore { font-size:28px; } .metric { padding:13px; } .metric-value { font-size:25px; } .result-top { align-items:flex-start; } }
+    </style>
+</head>
+<body>
+<main class="shell">
+    <header><div class="brand">ECG <span>Recording analysis</span></div><span class="header-note">HRV · Model research · SHAP</span></header>
+    <h1>Recording analysis</h1>
+    <p class="intro">Upload an ECG to inspect its waveform, heart-rate variability, and model prediction.</p>
+    <div class="workspace">
+        <aside class="panel">
+            <h2>Recording &amp; model</h2>
+            <form id="uploadForm">
+                <div class="field"><label for="ecgFile">ECG recording</label><input type="file" id="ecgFile" accept=".csv,.edf,.dat,.hea" required multiple><p class="help">CSV, EDF, or HEA + DAT. One recording at a time.</p></div>
+                <div class="field"><label for="samplingRate">CSV sampling rate · Hz</label><input type="number" id="samplingRate" value="250" min="50" step="1" required><p class="help">Demo samples: 250 Hz. EDF / WFDB detect their own rate.</p></div>
+                <div class="field"><label for="modelSelect">Classification model</label><select id="modelSelect">
+                    <option value="random_forest">Random Forest</option><option value="svm">SVM (RBF)</option><option value="logistic_regression">Logistic Regression</option><option value="extra_trees">Extra Trees</option><option value="xgboost" disabled>XGBoost · unavailable</option>
+                </select><p class="help" id="modelHelp">Synthetic demo training. Select a model, then analyze.</p><p class="help" id="unavailableModelsNote"></p></div>
+                <div class="actions"><button class="primary" id="analyzeBtn" type="submit">Analyze ECG &nbsp; →</button><button class="secondary" type="button" id="clearBtn">Clear</button></div>
+                <button class="compare-button" id="compareBtn" type="submit">Compare all models</button>
+            </form>
+            <p id="loading" class="hidden" role="status" style="margin-top:16px">Processing recording…</p>
+            <p id="error" class="hidden" role="alert"></p>
+            <details class="aside-note"><summary>Input requirements</summary><p>CSV needs an <strong>ECG</strong> column with one raw sample per row. Demo samples are synthetic classroom recordings.</p></details>
+        </aside>
+        <div class="right">
+            <section id="emptyPanel" class="empty"><span class="eyebrow">Start with a recording</span><h2>No recording selected.</h2><p>Your recording’s measurements and model explanation will appear here after analysis.</p></section>
+            <section id="progressContainer" class="panel hidden" aria-live="polite"><h3>Analysis progress</h3><div class="progress-track"><div id="progressBar"></div></div><p id="progressMessage">Preparing…</p></section>
+
+            <section id="resultsPanel" class="results hidden" aria-live="polite">
+                <div class="result-tools"><h2>Analysis results</h2><div class="download-actions"><button type="button" class="secondary" id="downloadPdfBtn">Download PDF</button><button type="button" class="secondary" id="downloadJsonBtn">Save JSON</button></div></div>
+                <div id="statusBanner" class="panel"><div class="result-top"><div><span class="eyebrow" id="predictionContext">Predicted state</span><p id="predictionLabel">—</p><p id="recordingName"></p></div><div class="score"><span class="eyebrow">Model confidence</span><p id="confidenceScore">—</p></div></div><div class="facts"><div class="fact">Model<strong id="resultModelValue">—</strong></div><div class="fact">Duration<strong id="durationValue">—</strong></div><div class="fact">Detected beats<strong id="peaksValue">—</strong></div><div class="fact">Sampling rate<strong id="rateValue">—</strong></div></div></div>
+                <section id="comparisonPanel" class="panel hidden"><h2>Model comparison</h2><div class="comparison-scroll"><table class="comparison-table"><thead><tr><th>Model</th><th>State</th><th>Stress probability</th><th>Confidence</th><th>Predict ms</th><th>SHAP ms</th><th>Explanation</th></tr></thead><tbody id="comparisonRows"></tbody></table></div><p class="help">Same recording and HRV features for every model. Probabilities do not measure accuracy. * Includes initial demo training.</p></section>
+                <div class="columns"><section class="panel"><h2>HRV measurements</h2><ul id="hrvList"></ul><p class="metric-guide">SDNN: overall beat variation · RMSSD: variation between successive beats.</p></section><section class="panel"><h2>What influenced the prediction</h2><div id="shapList"></div><div class="legend"><span><i class="increase"></i>Toward Stress</span><span><i class="decrease"></i>Toward No-Stress</span></div><p class="help" id="explanationCaption">SHAP explains the model’s output.</p></section></div>
+                <ul id="metricWarnings"></ul>
+                <p id="modelNotice" class="notice"></p>
+            </section>
+            <section id="ecgMonitorPanel" class="panel hidden"><div class="panel-heading"><h2>ECG waveform</h2><span class="tag">CSV replay</span></div><div class="waveform"><canvas id="ecgCanvas" aria-label="Replay of uploaded ECG waveform"></canvas></div><div class="chart-caption"><span>Signal amplitude</span><span>4-second window</span></div></section>
+            <section id="analyticsPanel" class="analytics hidden" aria-label="Recording graphs">
+                <section class="panel"><div class="panel-heading"><h2>Recording at a glance</h2><span class="tag">Detected beats</span></div><div class="analytics-summary">
+                    <div class="metric"><span class="metric-name">Average heart rate</span><strong class="metric-value" id="meanHeartRate">—</strong></div>
+                    <div class="metric"><span class="metric-name">Heart rate range</span><strong class="metric-value" id="heartRateRange">—</strong></div>
+                    <div class="metric"><span class="metric-name">Mean beat interval</span><strong class="metric-value" id="meanInterval">—</strong></div>
+                    <div class="metric"><span class="metric-name">Beat intervals</span><strong class="metric-value" id="intervalCount">—</strong></div>
+                </div><p class="help" id="analyticsCaption"></p></section>
+                <div class="chart-grid">
+                    <section class="panel chart-card wide"><h2>Heart rate over time</h2><canvas id="heartRateChart" class="analysis-chart" role="img" aria-label="Instantaneous heart rate in beats per minute over recording time"></canvas><p class="help">Each value is calculated from the interval between detected beats.</p></section>
+                    <section class="panel chart-card"><h2>Beat intervals over time</h2><canvas id="intervalChart" class="analysis-chart" role="img" aria-label="RR intervals in milliseconds over recording time"></canvas><p class="help">See how the spacing between heartbeats changes through the recording.</p></section>
+                    <section class="panel chart-card"><h2>Consecutive beat intervals</h2><canvas id="poincareChart" class="analysis-chart" role="img" aria-label="Poincare scatter plot of each RR interval against the next interval"></canvas><p class="help">Each dot pairs one interval with the next. The diagonal marks equal intervals.</p></section>
+                </div>
+            </section>
+        </div>
+    </div>
+    <footer>ECG / HRV research prototype. Demo predictions illustrate the workflow; they are not validated stress assessments.</footer>
+</main>
+<script>
+    const el = id => document.getElementById(id);
+    let animationInterval = null;
+    let previewVersion = 0;
+    let requestController = null;
+    let activeVersion = 0;
+    let previewPoints = [];
+    let previewIndex = 0;
+    let previewRate = 250;
+    let currentReport = null;
+    let resultAccent = '#D0D0D0';
+
+    function drawWaveform() {
+        const canvas = el('ecgCanvas');
+        const box = canvas.getBoundingClientRect();
+        const scale = window.devicePixelRatio || 1;
+        canvas.width = Math.round(box.width * scale);
+        canvas.height = Math.round(box.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        const w = box.width, h = box.height;
+        if (!w || !h) return;
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = '#242424'; ctx.lineWidth = 1;
+        for (let x = 0; x <= w; x += w / 16) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        for (let y = 0; y <= h; y += h / 6) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+        const count = Math.min(previewPoints.length, Math.round(previewRate * 4));
+        const points = previewPoints.slice(previewIndex, previewIndex + count);
+        if (points.length < 2 || !w || !h) return;
+        const lo = Math.min(...previewPoints), hi = Math.max(...previewPoints);
+        const span = hi - lo || 1;
+        ctx.strokeStyle = resultAccent; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        points.forEach((value, i) => {
+            const x = i / (count - 1) * w;
+            const y = h - 16 - (value - lo) / span * (h - 32);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+    }
+
+    function stopPreview() {
+        previewVersion++;
+        clearInterval(animationInterval);
+        animationInterval = null;
+        el('ecgMonitorPanel').classList.add('hidden');
+    }
+
+    function startECGAnimation(file, rate) {
+        if (!file.name.toLowerCase().endsWith('.csv')) return;
+        const version = ++previewVersion;
+        const reader = new FileReader();
+        reader.onload = event => {
+            if (version !== previewVersion) return;
+            const lines = event.target.result.split(/\r?\n/);
+            const headers = lines[0].split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+            const column = headers.indexOf('ECG');
+            if (column < 0) return;
+            const points = [];
+            for (const line of lines.slice(1, 8001)) {
+                const cell = line.split(',')[column];
+                if (cell === undefined || !cell.trim()) continue;
+                const value = Number(cell.trim().replace(/^"|"$/g, ''));
+                if (Number.isFinite(value)) points.push(value);
+            }
+            if (points.length < 2) return;
+            previewPoints = points; previewIndex = 0; previewRate = rate;
+            el('ecgMonitorPanel').classList.remove('hidden');
+            drawWaveform();
+            clearInterval(animationInterval);
+            animationInterval = setInterval(() => {
+                previewIndex += Math.max(1, Math.round(previewRate * .06));
+                if (previewIndex + previewRate * 4 >= previewPoints.length) previewIndex = 0;
+                drawWaveform();
+            }, 60);
+        };
+        reader.readAsText(file);
+    }
+    window.addEventListener('resize', () => { if (animationInterval) drawWaveform(); if (currentReport && !el('analyticsPanel').classList.contains('hidden')) renderAnalytics(currentReport); });
+
+    function plotSeries(id, points, xLabel, yLabel, scatter = false) {
+        const canvas = el(id), box = canvas.getBoundingClientRect(), ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.round(box.width * ratio); canvas.height = Math.round(box.height * ratio);
+        const ctx = canvas.getContext('2d'); ctx.scale(ratio, ratio);
+        const w = box.width, h = box.height;
+        if (!w || !h || !points.length) return;
+        const left = 57, top = 24, right = 16, bottom = 46;
+        let xmin = Math.min(...points.map(p => p[0])), xmax = Math.max(...points.map(p => p[0]));
+        let ymin = Math.min(...points.map(p => p[1])), ymax = Math.max(...points.map(p => p[1]));
+        if (scatter) { xmin = ymin = Math.min(xmin, ymin); xmax = ymax = Math.max(xmax, ymax); }
+        const ypad = Math.max((ymax - ymin) * .12, 1);
+        if (scatter) { xmin -= ypad; xmax += ypad; } else { xmin = 0; xmax = Math.max(1, Math.ceil(xmax)); }
+        ymin -= ypad; ymax += ypad;
+        const x = v => left + (v - xmin) / (xmax - xmin) * (w - left - right);
+        const y = v => h - bottom - (v - ymin) / (ymax - ymin) * (h - top - bottom);
+        ctx.font = '12px system-ui'; ctx.fillStyle = '#BCBCBC'; ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const xv = xmin + (xmax - xmin) * i / 4, yv = ymin + (ymax - ymin) * i / 4;
+            ctx.strokeStyle = '#303030'; ctx.beginPath(); ctx.moveTo(left, y(yv)); ctx.lineTo(w - right, y(yv)); ctx.stroke();
+            ctx.textAlign = 'right'; ctx.fillText(yv.toFixed(0), left - 9, y(yv) + 4);
+            ctx.textAlign = 'center'; ctx.fillText(xv.toFixed(scatter ? 0 : 1), x(xv), h - bottom + 20);
+        }
+        ctx.textAlign = 'left'; ctx.fillText(yLabel, left, 13);
+        ctx.textAlign = 'center'; ctx.fillText(xLabel, (left + w - right) / 2, h - 5);
+        if (scatter) {
+            ctx.strokeStyle = '#777777'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(x(xmin), y(xmin)); ctx.lineTo(x(xmax), y(xmax)); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = resultAccent;
+            for (const p of points) { ctx.beginPath(); ctx.arc(x(p[0]), y(p[1]), 2.5, 0, Math.PI * 2); ctx.fill(); }
+        } else {
+            ctx.strokeStyle = resultAccent; ctx.lineWidth = 2; ctx.beginPath();
+            points.forEach((p, i) => { if (!i) ctx.moveTo(x(p[0]), y(p[1])); else ctx.lineTo(x(p[0]), y(p[1])); }); ctx.stroke();
+        }
+    }
+
+    function renderAnalytics(data) {
+        const a = data.signal_analytics;
+        el('analyticsPanel').classList.toggle('hidden', !a);
+        if (!a) return;
+        el('meanHeartRate').textContent = a.mean_heart_rate_bpm.toFixed(1) + ' bpm';
+        el('heartRateRange').textContent = a.min_heart_rate_bpm.toFixed(0) + '–' + a.max_heart_rate_bpm.toFixed(0) + ' bpm';
+        el('meanInterval').textContent = a.mean_rr_ms.toFixed(0) + ' ms';
+        el('intervalCount').textContent = a.total_intervals.toLocaleString();
+        el('analyticsCaption').textContent = 'Average rate = 60,000 ÷ mean interval. ' + (a.total_intervals > a.time_seconds.length ? 'Charts show evenly sampled points from the full recording. ' : '') + 'These are signal measurements; chart colors follow the selected model’s prediction.';
+        plotSeries('heartRateChart', a.time_seconds.map((t, i) => [t, a.heart_rate_bpm[i]]), 'Recording time (s)', 'Heart rate (bpm)');
+        plotSeries('intervalChart', a.time_seconds.map((t, i) => [t, a.rr_intervals_ms[i]]), 'Recording time (s)', 'RR interval (ms)');
+        plotSeries('poincareChart', a.consecutive_rr_ms, 'RR interval (ms)', 'Next RR interval (ms)', true);
+    }
+
+    function renderResults(data) {
+        currentReport = data;
+        resultAccent = data.prediction.prediction_label === 'Stress' ? '#F87171' : '#4ADE80';
+        renderAnalytics(data);
+        if (animationInterval) drawWaveform();
+        el('resultsPanel').classList.remove('hidden');
+        el('emptyPanel').classList.add('hidden');
+        el('modelNotice').textContent = data.prediction.is_demo
+            ? 'Demo model · predictions and feature contributions are illustrative, not validated stress findings.'
+            : 'Locally trained model · confidence is a model output, not an accuracy measurement.';
+        el('statusBanner').className = 'panel ' + (data.prediction.prediction_label === 'Stress' ? 'stress' : 'no-stress');
+        el('predictionContext').textContent = data.prediction.is_demo ? 'Demo prediction' : 'Predicted state';
+        el('predictionLabel').textContent = data.prediction.prediction_label;
+        el('confidenceScore').textContent = (data.prediction.confidence_score * 100).toFixed(1) + '%';
+        el('recordingName').textContent = data.source_file;
+        const metadata = data.pipeline_metadata;
+        renderComparison(data);
+        el('resultModelValue').textContent = metadata.model_name || 'Random Forest';
+        el('explanationCaption').textContent = metadata.explanation_method
+            ? metadata.explanation_method + ' · ' + metadata.explanation_time_ms.toFixed(0) + ' ms. Explains model output, not measured accuracy.'
+            : 'SHAP explains the model’s output.';
+        const duration = metadata.duration_s ?? metadata.duration_sec;
+        el('durationValue').textContent = duration === undefined ? '—' : duration.toFixed(0) + ' s';
+        el('peaksValue').textContent = metadata.r_peaks_detected ?? '—';
+        el('rateValue').textContent = metadata.sampling_rate_hz ? metadata.sampling_rate_hz + ' Hz' : '—';
+        const warnings = el('metricWarnings'); warnings.replaceChildren();
+        for (const warning of metadata.warnings || []) { const item = document.createElement('li'); item.textContent = warning; warnings.appendChild(item); }
+        const names = { LF_HF_Ratio:'LF / HF ratio', SampEn:'Sample entropy', Sample_Entropy:'Sample entropy' };
+        const units = {SDNN:'ms', RMSSD:'ms', MeanRR:'ms', pNN50:'%'};
+        const metrics = el('hrvList'); metrics.replaceChildren();
+        for (const [key, value] of Object.entries(data.key_hrv_summary)) {
+            const item = document.createElement('li'); item.className = 'metric';
+            const label = document.createElement('span'); label.className = 'metric-name'; label.textContent = names[key] || key;
+            const reading = document.createElement('span'); reading.className = 'metric-value' + (value === null ? ' unavailable' : ''); reading.textContent = value === null ? 'Unavailable' : value.toFixed(2);
+            if (value !== null && units[key]) { const unit = document.createElement('span'); unit.className = 'unit'; unit.textContent = units[key]; reading.appendChild(unit); }
+            item.append(label, reading); metrics.appendChild(item);
+        }
+        const shap = el('shapList'); shap.replaceChildren();
+        const features = data.prediction.top_shap_features;
+        const maximum = Math.max(0, ...features.map(feature => Math.abs(feature.shap_value)));
+        if (!features.length) { const item = document.createElement('p'); item.className = 'help'; item.textContent = 'No feature contributions available.'; shap.appendChild(item); }
+        for (const feature of features) {
+            const row = document.createElement('div'); row.className = 'shap-row';
+            const label = document.createElement('div'); label.className = 'shap-label';
+            const name = document.createElement('span'); name.textContent = names[feature.feature_name] || feature.feature_name;
+            const actual = document.createElement('span'); actual.className = 'feature-reading';
+            actual.textContent = 'Value ' + feature.feature_value.toFixed(2) + (units[feature.feature_name] ? ' ' + units[feature.feature_name] : '');
+            name.appendChild(actual);
+            const value = document.createElement('small'); value.className = feature.shap_value > 0 ? 'contribution-positive' : feature.shap_value < 0 ? 'contribution-negative' : ''; value.textContent = (feature.shap_value > 0 ? '+' : '') + feature.shap_value.toFixed(3);
+            label.append(name, value);
+            const track = document.createElement('div'); track.className = 'shap-track';
+            const fill = document.createElement('div'); fill.className = 'shap-fill ' + (feature.shap_value > 0 ? 'increase' : 'decrease');
+            fill.style.width = (maximum ? Math.abs(feature.shap_value) / maximum * 100 : 0) + '%';
+            track.appendChild(fill); row.append(label, track); shap.appendChild(row);
+        }
+    }
+
+    function renderComparison(data) {
+        const panel = el('comparisonPanel'), body = el('comparisonRows'); body.replaceChildren();
+        const comparisons = data.model_comparison || [];
+        panel.classList[comparisons.length ? 'remove' : 'add']('hidden');
+        for (const model of comparisons) {
+            const row = document.createElement('tr');
+            const active = data.pipeline_metadata.model_id === model.model_id;
+            row.className = active ? 'selected' : '';
+            const values = model.prediction ? [model.model_name, model.prediction.prediction_label,
+                (model.prediction.stress_probability * 100).toFixed(1) + '%', (model.prediction.confidence_score * 100).toFixed(1) + '%',
+                model.prediction_time_ms.toFixed(1) + (model.included_training ? '*' : ''), model.explanation_time_ms.toFixed(1)]
+                : [model.model_name, 'Unavailable', '—', '—', '—', '—'];
+            values.forEach((value, index) => {
+                const cell = document.createElement('td'); cell.textContent = value;
+                if (index === 1 && model.prediction) cell.className = model.prediction.prediction_label === 'Stress' ? 'state-stress' : 'state-no-stress';
+                row.appendChild(cell);
+            });
+            const action = document.createElement('td');
+            if (model.prediction) {
+                const button = document.createElement('button'); button.type = 'button'; button.className = 'view-model';
+                button.textContent = active ? 'Shown' : 'View'; button.disabled = active;
+                button.addEventListener('click', () => renderResults({...currentReport, prediction:model.prediction,
+                    pipeline_metadata:{...currentReport.pipeline_metadata, model_id:model.model_id, model_name:model.model_name, model_used:model.model_used || model.model_name, included_training:model.included_training,
+                        explanation_method:model.explanation_method, prediction_time_ms:model.prediction_time_ms,
+                        explanation_time_ms:model.explanation_time_ms, is_demo:model.prediction.is_demo}}));
+                action.appendChild(button);
+            } else {
+                action.className = 'comparison-error'; action.textContent = model.error || 'Not available';
+            }
+            row.appendChild(action); body.appendChild(row);
+        }
+    }
+
+    function saveBlob(blob, filename) {
+        const url = URL.createObjectURL(blob), link = document.createElement('a');
+        link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    el('downloadJsonBtn').addEventListener('click', () => {
+        if (currentReport) saveBlob(new Blob([JSON.stringify(currentReport, null, 2)], {type:'application/json'}), currentReport.report_id + '.json');
+    });
+    el('downloadPdfBtn').addEventListener('click', async () => {
+        if (!currentReport) return;
+        const report = currentReport, button = el('downloadPdfBtn');
+        button.disabled = true; button.textContent = 'Preparing PDF…';
+        try {
+            const response = await fetch('/api/report.pdf', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(report)});
+            if (!response.ok) throw new Error('Report could not be downloaded. Please try again.');
+            saveBlob(await response.blob(), report.report_id + '.pdf');
+        } catch (error) { el('error').textContent = error.message; el('error').classList.remove('hidden'); }
+        finally { button.disabled = false; button.textContent = 'Download PDF'; }
+    });
+
+    let modelCatalog = [];
+    async function loadModels() {
+        try {
+            const response = await fetch('/api/models');
+            if (!response.ok) throw new Error('Model list unavailable');
+            const data = await response.json();
+            modelCatalog = data.models;
+            const selector = el('modelSelect'); selector.replaceChildren();
+            for (const model of modelCatalog) {
+                const option = document.createElement('option'); option.value = model.id;
+                option.textContent = model.name + (model.available ? '' : ' · unavailable');
+                option.disabled = !model.available; option.title = model.reason || ''; selector.appendChild(option);
+            }
+            selector.value = 'random_forest';
+            el('unavailableModelsNote').textContent = modelCatalog.filter(model => !model.available).map(model => model.name + ' is unavailable on this computer.').join(' ');
+        } catch (error) {
+            el('modelHelp').textContent = 'Could not refresh the model list. Check that the server is running.';
+        }
+    }
+    el('modelSelect').addEventListener('change', () => {
+        const model = modelCatalog.find(item => item.id === el('modelSelect').value);
+        el('modelHelp').textContent = model && !model.is_demo
+            ? 'Locally trained model. Analyze the recording to apply this model.'
+            : 'Synthetic demo training. Select a model, then analyze.';
+    });
+    loadModels();
+
+    el('clearBtn').addEventListener('click', () => {
+        activeVersion++;
+        if (requestController) requestController.abort();
+        el('uploadForm').reset(); stopPreview();
+        for (const id of ['resultsPanel','analyticsPanel','error','loading','progressContainer']) el(id).classList.add('hidden');
+        el('emptyPanel').classList.remove('hidden');
+        currentReport = null;
+        resultAccent = '#D0D0D0';
+        el('analyzeBtn').disabled = false;
+        el('compareBtn').disabled = false;
+        el('modelSelect').disabled = false;
+    });
+
+    el('uploadForm').addEventListener('submit', async event => {
+        event.preventDefault();
+        const files = Array.from(el('ecgFile').files);
+        if (!files.length) return;
+        const rate = Number(el('samplingRate').value);
+        const modelName = el('modelSelect').value;
+        const compareModels = event.submitter && event.submitter.id === 'compareBtn';
+        const version = ++activeVersion;
+        if (requestController) requestController.abort();
+        requestController = new AbortController();
+        el('analyzeBtn').disabled = true;
+        el('compareBtn').disabled = true;
+        el('modelSelect').disabled = true;
+        el('loading').classList.remove('hidden');
+        el('error').classList.add('hidden');
+        el('resultsPanel').classList.add('hidden');
+        el('analyticsPanel').classList.add('hidden');
+        resultAccent = '#D0D0D0';
+        el('emptyPanel').classList.add('hidden');
+        el('progressContainer').classList.remove('hidden');
+        el('progressBar').style.width = '0%'; el('progressBar').style.background = 'var(--accent)';
+        el('progressMessage').textContent = 'Preparing…';
+        stopPreview();
+        const csv = files.find(file => file.name.toLowerCase().endsWith('.csv'));
+        if (csv) startECGAnimation(csv, rate);
+        const body = new FormData(); files.forEach(file => body.append('files', file));
+        let complete = false;
+        function handleMessage(line) {
+            if (!line.trim()) return;
+            const message = JSON.parse(line);
+            if (message.status === 'error') throw new Error(message.message);
+            if (message.status === 'progress') { el('progressBar').style.width = message.progress + '%'; el('progressMessage').textContent = message.message; }
+            if (message.status === 'complete') { complete = true; renderResults(message.data); el('progressContainer').classList.add('hidden'); }
+        }
+        try {
+            const response = await fetch('/api/analyze?sampling_rate=' + encodeURIComponent(rate) + '&model_name=' + encodeURIComponent(modelName) + '&compare_models=' + Boolean(compareModels), {method:'POST', body, signal:requestController.signal});
+            if (!response.ok) { const failure = await response.json(); throw new Error(typeof failure.detail === 'string' ? failure.detail : 'Check the uploaded files and sampling rate.'); }
+            const reader = response.body.getReader(), decoder = new TextDecoder();
+            let buffer = '';
+            while (true) {
+                const {done, value} = await reader.read();
+                if (version !== activeVersion) return;
+                if (done) break;
+                buffer += decoder.decode(value, {stream:true});
+                const lines = buffer.split('\n'); buffer = lines.pop(); lines.forEach(handleMessage);
+            }
+            buffer += decoder.decode(); if (buffer.trim()) handleMessage(buffer);
+            if (!complete) throw new Error('Analysis ended before a result was received. Please try again.');
+        } catch (error) {
+            if (version !== activeVersion || error.name === 'AbortError') return;
+            el('error').textContent = error.message; el('error').classList.remove('hidden');
+            el('progressMessage').textContent = 'Analysis could not be completed.';
+            el('progressBar').style.background = 'var(--increase)';
+            stopPreview();
+        } finally {
+            if (version === activeVersion) { el('loading').classList.add('hidden'); el('analyzeBtn').disabled = false; el('compareBtn').disabled = false; el('modelSelect').disabled = false; }
+        }
+    });
+</script>
+</body>
+</html>

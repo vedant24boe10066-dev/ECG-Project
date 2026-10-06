@@ -1,0 +1,256 @@
+{
+  "description": "Synthetic demo predictions, not accuracy evaluation.",
+  "sampling_rate_hz": 250,
+  "results": [
+    {
+      "file": "01_baseline_70bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "No-Stress",
+          "stress_probability": 0.1559,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "No-Stress",
+          "stress_probability": 0.0744,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "No-Stress",
+          "stress_probability": 0.1495,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "No-Stress",
+          "stress_probability": 0.098,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "02_slower_60bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "No-Stress",
+          "stress_probability": 0.1008,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "No-Stress",
+          "stress_probability": 0.0953,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "No-Stress",
+          "stress_probability": 0.0544,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "No-Stress",
+          "stress_probability": 0.0784,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "03_faster_90bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "Stress",
+          "stress_probability": 0.8397,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "Stress",
+          "stress_probability": 0.7016,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "Stress",
+          "stress_probability": 0.8333,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "Stress",
+          "stress_probability": 0.8261,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "04_faster_105bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "Stress",
+          "stress_probability": 0.8404,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "Stress",
+          "stress_probability": 0.6559,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "Stress",
+          "stress_probability": 0.862,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "Stress",
+          "stress_probability": 0.8232,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "05_low_variability_75bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "Stress",
+          "stress_probability": 0.8524,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "Stress",
+          "stress_probability": 0.6687,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "Stress",
+          "stress_probability": 0.8056,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "Stress",
+          "stress_probability": 0.7998,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "06_higher_variability_75bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "No-Stress",
+          "stress_probability": 0.0732,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "No-Stress",
+          "stress_probability": 0.0917,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "No-Stress",
+          "stress_probability": 0.1047,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "No-Stress",
+          "stress_probability": 0.0588,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "07_light_noise_70bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "No-Stress",
+          "stress_probability": 0.1843,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "No-Stress",
+          "stress_probability": 0.088,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "No-Stress",
+          "stress_probability": 0.2279,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "No-Stress",
+          "stress_probability": 0.1296,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "08_baseline_wander_70bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "No-Stress",
+          "stress_probability": 0.1914,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "No-Stress",
+          "stress_probability": 0.0817,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "No-Stress",
+          "stress_probability": 0.2012,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "No-Stress",
+          "stress_probability": 0.1404,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "09_longer_80bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "Stress",
+          "stress_probability": 0.8854,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "Stress",
+          "stress_probability": 0.6239,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "Stress",
+          "stress_probability": 0.7597,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "Stress",
+          "stress_probability": 0.7885,
+          "is_demo": true
+        }
+      }
+    },
+    {
+      "file": "10_longer_variable_65bpm.csv",
+      "models": {
+        "Random Forest": {
+          "label": "No-Stress",
+          "stress_probability": 0.0709,
+          "is_demo": true
+        },
+        "SVM (RBF)": {
+          "label": "No-Stress",
+          "stress_probability": 0.1098,
+          "is_demo": true
+        },
+        "Logistic Regression": {
+          "label": "No-Stress",
+          "stress_probability": 0.0634,
+          "is_demo": true
+        },
+        "Extra Trees": {
+          "label": "No-Stress",
+          "stress_probability": 0.0625,
+          "is_demo": true
+        }
+      }
+    }
+  ]
+}
