@@ -76,3 +76,13 @@ The comparison API uses `compare_models=true`; `POST /api/report.pdf` accepts an
 ### Recording graphs and state accents (2026-10-06)
 
 Black theme now uses red for Stress and green for No-Stress, including results, comparison states, waveform and analysis graphs. Below the waveform, analysis displays average/range heart rate, mean RR interval, interval count, heart-rate and RR time-series charts, and a consecutive-RR (Poincare) scatter plot. Charts use detected beats for every supported input format; default classifiers remain clearly marked as demonstrations. Chart payloads are limited to 1,500 points; summary statistics use all intervals, and scatter pairs preserve original consecutive beats. Model switching recolors graphs without recalculating the signal. Clear and a new analysis hide previous graphs. Verified with all 10 demo samples, 59 Python tests, and Node UI checks.
+
+## Share a public demo with Render
+
+The repository includes `render.yaml` for a single Python web service. Push `requirements.txt` and `render.yaml` to GitHub, then sign in to Render and create a Blueprint from this repository. Review the Free plan before deploying. The resulting HTTPS `onrender.com` URL serves both the UI and API, so visitors do not need your Mac running.
+
+For manual setup, create a **Web Service**, select Python 3 and branch `main`, use `pip install -r requirements.txt` as the build command, and `uvicorn api:app --host 0.0.0.0 --port $PORT --workers 1` as the start command. Copy environment values from `render.yaml`.
+
+Free services sleep after 15 minutes without traffic and can take about a minute to wake. The scientific libraries and model comparison may exceed a small instance's memory; verify every model with the demo samples on the deployed service and choose more memory if deployment logs show a memory limit. Hosting configuration has been prepared and checked locally; a live cloud deployment has not yet been verified.
+
+Uploads are used temporarily during analysis and removed afterwards. Reports are downloaded directly; this service does not provide persistent report history. Demo predictions remain illustrative rather than validated stress assessments.
